@@ -1,0 +1,97 @@
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: coalmine-app
+  labels:
+    app: coalmine
+spec:
+  containers:
+    - name: coalmine-app
+      image: coalmine
+      imagePullPolicy: Never
+
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: canary-app
+  labels:
+    app: canary
+spec:
+  containers:
+    - name: canary-app
+      image: coalmine
+      imagePullPolicy: Never
+      env:
+        - name: CANARY
+          value: "true"
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: coalmine-service
+spec:
+  selector:
+    app: coalmine
+  ports:
+    - port: 8000
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: canary-service
+spec:
+  selector:
+    app: canary
+  ports:
+    - port: 8000
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: coalmine-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/server-snippet: |
+      more_set_input_headers "X-Canary: $remote_user";
+spec:
+  rules:
+    - host: coalmine.local
+      http:
+        paths:
+          - pathType: Prefix
+            path: /
+            backend:
+              service:
+                name: coalmine-service
+                port:
+                  number: 8000
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: canary-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/server-snippet: |
+      more_set_input_headers "X-Canary: $remote_user";
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-by-header: "Authorization"
+    nginx.ingress.kubernetes.io/canary-by-header-pattern: "^Basic Y2FuYXJ5"
+spec:
+  rules:
+    - host: coalmine.local
+      http:
+        paths:
+          - pathType: Prefix
+            path: /
+            backend:
+              service:
+                name: canary-service
+                port:
+                  number: 8000
