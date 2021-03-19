@@ -1,3 +1,6 @@
+Pre-Requisite:
+* Minikube needs ingress enabled with `minikube addons enable ingress`
+
 # Canary Demo
 
 1. Build image with `docker build -t coalmine .`
